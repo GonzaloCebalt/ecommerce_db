@@ -1,14 +1,18 @@
 from fastapi import FastAPI, Depends, HTTPException, status
+from api.v1.api import api_router
 from sqlalchemy.orm import Session
 import crud, schemas
 from database import get_db
 from fastapi.security import OAuth2PasswordRequestForm
 from utils import verify_password
-from auth import crear_token
+from auths import crear_token
 from deps import get_current_user, require_admin
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 app = FastAPI()
+
+app.include_router(api_router, prefix="api/v1")
 
 productos = []
 
@@ -18,16 +22,12 @@ class Producto(BaseModel):
     en_stock: bool
 
 
-
-app = FastAPI()
-
-
 @app.get("/productos", response_model=list[schemas.ProductoResponse])
 def listar_productos(db: Session = Depends(get_db)):
     return crud.obtener_productos(db)
 
 
-@app.post("/productos", response_model=schemas.ProductoResponse)
+@app.post("/productos", response_model=schemas.ProductoResponse, dependencies=[Depends(require_admin)])
 def agregar_producto(
     producto: schemas.ProductoCreate,
     db: Session = Depends(get_db)
@@ -81,6 +81,7 @@ def eliminar_producto(
     return {"mensaje": "Producto eliminado"}
 
 #user
+api_router = APIRouter()
 
 @app.post("/usuarios", response_model=schemas.UsuarioResponse, status_code=status.HTTP_201_CREATED)
 def registrar_usuario(usuario: schemas.UsuarioCreate, db:Session = Depends(get_db)):
